@@ -1,1 +1,4 @@
-<Solution />
+<Solution>
+  <Project Path="ProductService/ProductService.csproj" Id="4614e429-7771-4291-81fb-5e0978824a96" />
+  <Project Path="UserService/UserService.csproj" Id="d991a1fe-2be4-4fcd-916d-b94d9c07daf2" />
+</Solution>
