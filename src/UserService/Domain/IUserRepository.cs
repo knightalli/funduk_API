@@ -1,4 +1,6 @@
-﻿namespace UserService.Domain;
+﻿using Common.Contracts;
+
+namespace UserService.Domain;
 
 public interface IUserRepository
 {

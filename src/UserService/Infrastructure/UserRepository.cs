@@ -1,16 +1,21 @@
-﻿using UserService.Domain;
+﻿using Common.Contracts;
+using Microsoft.EntityFrameworkCore;
+using UserService.Domain;
 
 namespace UserService.Infrastructure;
 
-public class UserRepository : IUserRepository
+public class UserRepository(UserDbContext db) : IUserRepository
 {
-    public Task<User?> GetByIdAsync(UserId id, CancellationToken ct)
-    {
-        throw new NotImplementedException();
-    }
+    private readonly UserDbContext _db = db;
 
     public Task AddAsync(User user, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        _db.UserProfiles.Add(user);
+        return Task.CompletedTask;
+    }
+
+    public Task<User?> GetByIdAsync(UserId id, CancellationToken ct)
+    {
+        return _db.UserProfiles.FirstOrDefaultAsync(u => u.Id == id, ct);
     }
 }

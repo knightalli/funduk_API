@@ -1,4 +1,6 @@
-﻿namespace ProductService.Domain;
+﻿using Common.Contracts;
+
+namespace ProductService.Domain;
 
 public class Product(ProductId id, string name, string? category, decimal price)
 {
