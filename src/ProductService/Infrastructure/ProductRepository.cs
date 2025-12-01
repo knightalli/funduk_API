@@ -1,17 +1,21 @@
 ﻿using Common.Contracts;
+using Microsoft.EntityFrameworkCore;
 using ProductService.Domain;
 
 namespace ProductService.Infrastructure;
 
-public class ProductRepository : IProductRepository
+public class ProductRepository(ProductDbContext db) : IProductRepository
 {
+    private readonly ProductDbContext _db = db;
+
     public Task<Product?> GetByIdAsync(ProductId id, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        return _db.Products.FirstOrDefaultAsync(u => u.Id == id, ct);
     }
 
     public Task AddAsync(Product product, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        _db.Products.Add(product);
+        return Task.CompletedTask;
     }
 }
