@@ -1,4 +1,5 @@
-﻿using ProductService.Domain;
+﻿using Common.Contracts;
+using ProductService.Domain;
 
 namespace ProductService.Infrastructure;
 

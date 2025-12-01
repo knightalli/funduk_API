@@ -1,5 +1,5 @@
+﻿using Common.Contracts;
 using OrderService.Domain;
-using UserService.Domain;
 
 namespace OrderService.Application;
 

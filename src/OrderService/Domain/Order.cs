@@ -1,5 +1,4 @@
-using ProductService.Domain;
-using UserService.Domain;
+﻿using Common.Contracts;
 
 namespace OrderService.Domain;
 
