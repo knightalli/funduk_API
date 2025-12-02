@@ -1,26 +1,35 @@
+using Microsoft.EntityFrameworkCore;
 using OrderService.Domain;
 
 namespace OrderService.Infrastructure;
 
-public class OrderRepository : IOrderRepository
+public class OrderRepository(OrderDbContext db) : IOrderRepository
 {
+    private readonly OrderDbContext _db = db;
     public Task<Order?> GetByIdAsync(OrderId id, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        return _db.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
     }
 
-    public Task AddAsync(Order order, CancellationToken cancellationToken)
+    public Task AddAsync(Order order)
     {
-        throw new NotImplementedException();
+        db.Orders.Add(order);
+        return Task.CompletedTask;
     }
 
-    public Task AddOrderItemAsync(Order order, OrderItem orderItem, CancellationToken cancellationToken)
+    public Task AddOrderItem(Order order, OrderItem orderItem)
     {
-        throw new NotImplementedException();
+        var items = (List<OrderItem>)order.OrderItems;
+        items.Add(orderItem);
+        return Task.CompletedTask;
     }
 
-    public Task RemoveOrderItemAsync(Order order, OrderItem orderItem, CancellationToken cancellationToken)
+    public Task RemoveOrderItem(Order order, OrderItem orderItem)
     {
-        throw new NotImplementedException();
+        var items = (List<OrderItem>)order.OrderItems;
+        items.Remove(orderItem);
+        return Task.CompletedTask;
     }
 }

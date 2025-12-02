@@ -1,9 +1,13 @@
-﻿using Common.Contracts;
+﻿namespace OrderService.Domain;
 
-namespace OrderService.Domain;
+public readonly record struct OrderId(Guid Value);
+public readonly record struct UserId(Guid Value);
+public readonly record struct ProductId(Guid Value);
+public record OrderItem(ProductId ProductId, int Quantity);
 
-public class Order(OrderId id, UserId userId, IReadOnlyCollection<OrderItem> orderItems)
+public sealed class Order(OrderId id, UserId userId, IReadOnlyCollection<OrderItem> orderItems)
 {
+    private Order() : this(default, default, Array.Empty<OrderItem>()) { }
     public OrderId Id { get; private set; } = id;
 
     public UserId UserId { get; private set; } = userId;
@@ -11,4 +15,3 @@ public class Order(OrderId id, UserId userId, IReadOnlyCollection<OrderItem> ord
     public IReadOnlyCollection<OrderItem> OrderItems { get; private set; } = orderItems;
 }
 
-public record OrderItem(ProductId ProductId, int Quantity);
