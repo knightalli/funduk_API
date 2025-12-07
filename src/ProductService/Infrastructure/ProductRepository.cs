@@ -17,4 +17,9 @@ public class ProductRepository(ProductDbContext db) : IProductRepository
         _db.Products.Add(product);
         return Task.CompletedTask;
     }
+
+    public Task SaveChangesAsync(CancellationToken ct)
+    {
+        return _db.SaveChangesAsync(ct);
+    }
 }

@@ -17,4 +17,9 @@ public class UserRepository(UserDbContext db) : IUserRepository
         _db.UserProfiles.Add(user);
         return Task.CompletedTask;
     }
+
+    public Task SaveChangesAsync(CancellationToken ct)
+    {
+        return _db.SaveChangesAsync(ct);
+    }
 }

@@ -15,7 +15,7 @@ public class UserDbContext(DbContextOptions<UserDbContext> options) : IdentityDb
 
         builder.Entity<User>(cfg =>
         {
-            cfg.ToTable("Users");
+            cfg.ToTable("UserProfiles");
             cfg.HasKey(u => u.Id);
             cfg.Property(u => u.Id)
                .HasConversion(id => id.Value, value => new UserId(value));
