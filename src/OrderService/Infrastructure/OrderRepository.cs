@@ -1,14 +1,13 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using OrderService.Domain;
 
 namespace OrderService.Infrastructure;
 
 public class OrderRepository(OrderDbContext db) : IOrderRepository
 {
-    private readonly OrderDbContext _db = db;
     public Task<Order?> GetByIdAsync(OrderId id, CancellationToken cancellationToken)
     {
-        return _db.Orders
+        return db.Orders
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
     }

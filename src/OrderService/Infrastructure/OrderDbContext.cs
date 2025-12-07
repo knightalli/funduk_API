@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using OrderService.Domain;
 
 namespace OrderService.Infrastructure;
@@ -10,7 +10,7 @@ public class OrderDbContext(DbContextOptions<OrderDbContext> options) : DbContex
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfiguration());
-        
+
         base.OnModelCreating(modelBuilder);
     }
 }

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OrderService.Domain;
 
@@ -44,7 +44,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             navigationBuilder.Property(i => i.Quantity)
                 .IsRequired();
         });
-        
+
         builder.Navigation(o => o.OrderItems).AutoInclude(false);
     }
 }

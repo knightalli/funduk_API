@@ -1,6 +1,4 @@
-﻿using Common.Contracts;
-
-namespace ProductService.Domain;
+﻿namespace ProductService.Domain;
 
 public class Product(ProductId id, string name, string? category, decimal price)
 {
@@ -12,3 +10,5 @@ public class Product(ProductId id, string name, string? category, decimal price)
 
     public decimal Price { get; private set; } = price;
 }
+
+public readonly record struct ProductId(Guid Value);

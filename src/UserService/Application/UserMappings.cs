@@ -1,4 +1,5 @@
-﻿using UserService.Domain;
+﻿using Common.Contracts.Users;
+using UserService.Domain;
 
 namespace UserService.Application;
 

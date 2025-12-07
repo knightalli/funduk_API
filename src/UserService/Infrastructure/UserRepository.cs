@@ -1,5 +1,4 @@
-﻿using Common.Contracts;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using UserService.Domain;
 
 namespace UserService.Infrastructure;

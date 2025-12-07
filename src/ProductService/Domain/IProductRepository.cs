@@ -1,6 +1,4 @@
-﻿using Common.Contracts;
-
-namespace ProductService.Domain;
+﻿namespace ProductService.Domain;
 
 public interface IProductRepository
 {

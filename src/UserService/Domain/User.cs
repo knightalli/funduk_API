@@ -1,6 +1,4 @@
-﻿using Common.Contracts;
-
-namespace UserService.Domain;
+﻿namespace UserService.Domain;
 
 public class User
 {
@@ -22,3 +20,5 @@ public class User
         Email = email;
     }
 }
+
+public readonly record struct UserId(Guid Value);
