@@ -5,7 +5,7 @@ namespace ProductService.Controllers;
 
 [ApiController]
 [Route("products")]
-public sealed class ProductsController(IProductQueries queries, IProductCommands commands) : ControllerBase
+public sealed class  ProductsController(IProductQueries queries, IProductCommands commands) : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
