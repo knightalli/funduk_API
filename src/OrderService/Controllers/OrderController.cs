@@ -1,6 +1,6 @@
+﻿using Common.Contracts.Orders;
 using Microsoft.AspNetCore.Mvc;
 using OrderService.Application;
-using Common.Contracts.Orders;
 using ProductId = OrderService.Domain.ProductId;
 
 namespace OrderService.Controllers;

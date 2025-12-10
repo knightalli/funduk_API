@@ -1,4 +1,4 @@
-using Common.Contracts.Orders;
+﻿using Common.Contracts.Orders;
 using OrderService.Domain;
 using OrderItem = OrderService.Domain.OrderItem;
 using ProductId = OrderService.Domain.ProductId;
@@ -11,7 +11,7 @@ public sealed record CreateOrderCommand(Guid UserId);
 public interface IOrderCommands
 {
     Task<OrderDto> CreateAsync(CreateOrderCommand command, CancellationToken ct);
-    
+
     Task AddOrderItemAsync(Guid orderId, ProductId productId, int quantity, CancellationToken ct);
     Task RemoveOrderItemAsync(Guid orderId, ProductId productId, CancellationToken ct);
 }

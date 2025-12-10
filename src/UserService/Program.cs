@@ -1,14 +1,17 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using UserService.Application;
 using UserService.Domain;
 using UserService.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddDbContext<UserDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Users"));
-});
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Users")));
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
@@ -20,9 +23,10 @@ builder.Services
     .AddEntityFrameworkStores<UserDbContext>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserQueries, UserQueries>();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -33,8 +37,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapControllers();
 app.Run();

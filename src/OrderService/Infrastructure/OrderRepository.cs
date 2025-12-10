@@ -34,5 +34,5 @@ public class OrderRepository(OrderDbContext db) : IOrderRepository
     {
         return _db.SaveChangesAsync(ct);
     }
-    
+
 }
