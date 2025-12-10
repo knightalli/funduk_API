@@ -6,11 +6,19 @@ namespace OrderService.Infrastructure;
 public class OrderRepository(OrderDbContext db) : IOrderRepository
 {
     private readonly OrderDbContext _db = db;
+
     public Task<Order?> GetByIdAsync(OrderId id, CancellationToken cancellationToken)
+            => _db.Orders
+                .Include(o => o.OrderItems)
+                .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Order>> GetByUserIdAsync(UserId userId, CancellationToken cancellationToken)
     {
-        return _db.Orders
+        return await _db.Orders
+            .AsNoTracking()
             .Include(o => o.OrderItems)
-            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+            .Where(o => o.UserId == userId)
+            .ToListAsync(cancellationToken);
     }
 
     public Task AddAsync(Order order)

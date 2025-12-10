@@ -1,4 +1,4 @@
-using Common.Contracts.Orders;
+﻿using Common.Contracts.Orders;
 using OrderService.Domain;
 
 namespace OrderService.Application;

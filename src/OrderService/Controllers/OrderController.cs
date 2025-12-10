@@ -19,6 +19,13 @@ public sealed class OrdersController(
         return order is null ? NotFound() : Ok(order);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetByUserId([FromQuery] Guid userId, CancellationToken ct)
+    {
+        var orders = await queries.GetByUserIdAsync(userId, ct);
+        return Ok(orders);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateOrderCommand command, CancellationToken ct)
     {
