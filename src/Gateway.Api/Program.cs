@@ -1,12 +1,20 @@
 ﻿using Common.Contracts.Gateway;
 using Gateway.Api.Clients;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration["Redis:ConnectionString"];
+    options.InstanceName = "gateway:";
+});
 
 builder.Services.AddHttpClient<UserServiceClient>(c =>
 {
@@ -43,8 +51,18 @@ app.MapGet("/api/profile/{userId:guid}", async (
     UserServiceClient users,
     OrderServiceClient orders,
     ProductServiceClient products,
+    IDistributedCache cache,
     CancellationToken ct) =>
 {
+    var cacheKey = $"profile:{userId}";
+
+    var cached = await cache.GetStringAsync(cacheKey, ct);
+    if (cached is not null)
+    {
+        var cachedResponse = JsonSerializer.Deserialize<ProfileResponseDto>(cached)!;
+        return Results.Ok(cachedResponse);
+    }
+    
     using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
     timeoutCts.CancelAfter(TimeSpan.FromSeconds(2));
     var token = timeoutCts.Token;
@@ -88,6 +106,16 @@ app.MapGet("/api/profile/{userId:guid}", async (
                 );
             })]
         ))]
+    );
+    
+    await cache.SetStringAsync(
+        cacheKey,
+        JsonSerializer.Serialize(response),
+        new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+        },
+        ct
     );
 
     return Results.Ok(response);
