@@ -12,17 +12,15 @@ public interface IOrderQueries
 
 public sealed class OrderQueries(IOrderRepository repository) : IOrderQueries
 {
-    private readonly IOrderRepository _repository = repository;
-
     public async Task<OrderDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var order = await _repository.GetByIdAsync(new OrderId(id), cancellationToken);
+        var order = await repository.GetByIdAsync(new OrderId(id), cancellationToken);
         return order?.ToDto();
     }
 
     public async Task<IReadOnlyList<OrderDto>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var orders = await _repository.GetByUserIdAsync(new UserId(userId), cancellationToken);
+        var orders = await repository.GetByUserIdAsync(new UserId(userId), cancellationToken);
         return [.. orders.Select(o => o.ToDto())];
     }
 }

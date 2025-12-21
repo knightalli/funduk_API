@@ -1,0 +1,174 @@
+﻿name: microservices-funduk
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "15432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "16379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    ports:
+      - "15540:5540"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [backend]
+
+  userservice:
+    image: userservice
+    build:
+      context: .
+      dockerfile: UserService/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Users: Host=postgres;Port=5432;Database=users_db;Username=postgres;Password=postgres
+    ports:
+      - "15101:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  orderservice:
+    image: orderservice
+    build:
+      context: .
+      dockerfile: OrderService/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__OrdersDb: Host=postgres;Port=5432;Database=orders_db;Username=postgres;Password=postgres
+    ports:
+      - "15102:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  productservice:
+    image: productservice
+    build:
+      context: .
+      dockerfile: ProductService/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ProductsDb: Host=postgres;Port=5432;Database=products_db;Username=postgres;Password=postgres
+    ports:
+      - "15103:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  gateway.api:
+    image: gateway.api
+    build:
+      context: .
+      dockerfile: Gateway.Api/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+
+      Services__User: http://userservice:8080
+      Services__Orders: http://orderservice:8080
+      Services__Products: http://productservice:8080
+
+      Redis__ConnectionString: redis:6379
+
+      Jwt__Issuer: http://gateway.api
+      Jwt__Audience: gateway
+      Jwt__Key: "dev-super-secret-key-change-me-please-32chars"
+    ports:
+      - "15000:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      userservice:
+        condition: service_started
+      orderservice:
+        condition: service_started
+      productservice:
+        condition: service_started
+    networks: [backend]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "19090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    depends_on:
+      gateway.api:
+        condition: service_started
+      userservice:
+        condition: service_started
+      orderservice:
+        condition: service_started
+      productservice:
+        condition: service_started
+    networks: [backend]
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "13000:3000"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks: [backend]
+
+networks:
+  backend:
+
+volumes:
+  pgdata:
+  redisdata:
+  prometheusdata:
+  grafanadata:

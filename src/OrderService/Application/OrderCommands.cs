@@ -18,8 +18,6 @@ public interface IOrderCommands
 
 public sealed class OrderCommands(IOrderRepository repository) : IOrderCommands
 {
-    private readonly IOrderRepository _repository = repository;
-
     public async Task<OrderDto> CreateAsync(CreateOrderCommand command, CancellationToken ct)
     {
         var order = new Order(
@@ -28,34 +26,34 @@ public sealed class OrderCommands(IOrderRepository repository) : IOrderCommands
             []
         );
 
-        await _repository.AddAsync(order);
-        await _repository.SaveChangesAsync(ct);
+        await repository.AddAsync(order);
+        await repository.SaveChangesAsync(ct);
 
         return order.ToDto();
     }
 
     public async Task AddOrderItemAsync(Guid orderId, ProductId productId, int quantity, CancellationToken ct)
     {
-        var order = await _repository.GetByIdAsync(new OrderId(orderId), ct)
+        var order = await repository.GetByIdAsync(new OrderId(orderId), ct)
                     ?? throw new Exception("Order not found");
 
         var item = new OrderItem(productId, quantity);
 
-        await _repository.AddOrderItemAsync(order, item);
+        await repository.AddOrderItemAsync(order, item);
 
-        await _repository.SaveChangesAsync(ct);
+        await repository.SaveChangesAsync(ct);
     }
 
     public async Task RemoveOrderItemAsync(Guid orderId, ProductId productId, CancellationToken ct)
     {
-        var order = await _repository.GetByIdAsync(new OrderId(orderId), ct)
+        var order = await repository.GetByIdAsync(new OrderId(orderId), ct)
                     ?? throw new Exception("Order not found");
 
         var item = order.OrderItems.FirstOrDefault(i => i.ProductId == productId)
                    ?? throw new Exception("Item not found");
 
-        await _repository.RemoveOrderItemAsync(order, item);
+        await repository.RemoveOrderItemAsync(order, item);
 
-        await _repository.SaveChangesAsync(ct);
+        await repository.SaveChangesAsync(ct);
     }
 }

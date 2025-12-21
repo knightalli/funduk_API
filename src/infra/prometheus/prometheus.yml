@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway.api:8080"]
+
+  - job_name: userservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["userservice:8080"]
+
+  - job_name: orderservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["orderservice:8080"]
+
+  - job_name: productservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["productservice:8080"]

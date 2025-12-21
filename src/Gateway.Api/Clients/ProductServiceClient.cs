@@ -8,7 +8,7 @@ public sealed class ProductServiceClient(HttpClient http)
     public async Task<IReadOnlyList<ProductDto>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
         var pairs = ids.Select(id => new KeyValuePair<string, string>("ids", id.ToString()));
-        var url = QueryHelpers.AddQueryString("/products", pairs);
+        var url = QueryHelpers.AddQueryString("/products", pairs!);
 
         var products = await http.GetFromJsonAsync<List<ProductDto>>(url, ct);
         return products ?? [];

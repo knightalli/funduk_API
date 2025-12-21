@@ -1,0 +1,74 @@
+# This is a generated file. Not intended for manual editing.
+services:
+  gateway.api:
+    build:
+      context: "C:\\.NET\\Web\\funduk_API\\src"
+      dockerfile: "Gateway.Api/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net8.0/Gateway.Api.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "gateway.api:dev"
+    ports: []
+    volumes:
+    - "C:\\.NET\\Web\\funduk_API\\src\\Gateway.Api:/app:rw"
+    - "C:\\.NET\\Web\\funduk_API\\src:/src:rw"
+    - "C:\\Users\\romy4\\.nuget\\packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  orderservice:
+    build:
+      context: "C:\\.NET\\Web\\funduk_API\\src"
+      dockerfile: "OrderService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net8.0/OrderService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "orderservice:dev"
+    ports: []
+    volumes:
+    - "C:\\.NET\\Web\\funduk_API\\src\\OrderService:/app:rw"
+    - "C:\\.NET\\Web\\funduk_API\\src:/src:rw"
+    - "C:\\Users\\romy4\\.nuget\\packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  productservice:
+    build:
+      context: "C:\\.NET\\Web\\funduk_API\\src"
+      dockerfile: "ProductService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net8.0/ProductService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "productservice:dev"
+    ports: []
+    volumes:
+    - "C:\\.NET\\Web\\funduk_API\\src\\ProductService:/app:rw"
+    - "C:\\.NET\\Web\\funduk_API\\src:/src:rw"
+    - "C:\\Users\\romy4\\.nuget\\packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  userservice:
+    build:
+      context: "C:\\.NET\\Web\\funduk_API\\src"
+      dockerfile: "UserService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net8.0/UserService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "userservice:dev"
+    ports: []
+    volumes:
+    - "C:\\.NET\\Web\\funduk_API\\src\\UserService:/app:rw"
+    - "C:\\.NET\\Web\\funduk_API\\src:/src:rw"
+    - "C:\\Users\\romy4\\.nuget\\packages:/home/app/.nuget/packages"
+    working_dir: "/app"
