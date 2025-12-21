@@ -5,7 +5,8 @@ using UserService.Domain;
 
 namespace UserService.Infrastructure;
 
-public class UserDbContext(DbContextOptions<UserDbContext> options) : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
+public class UserDbContext(DbContextOptions<UserDbContext> options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<User> UserProfiles => Set<User>();
 
@@ -18,19 +19,19 @@ public class UserDbContext(DbContextOptions<UserDbContext> options) : IdentityDb
             cfg.ToTable("UserProfiles");
             cfg.HasKey(u => u.Id);
             cfg.Property(u => u.Id)
-               .HasConversion(id => id.Value, value => new UserId(value));
+                .HasConversion(id => id.Value, value => new UserId(value));
 
             cfg.Property(u => u.FirstName)
-               .IsRequired()
-               .HasMaxLength(100);
+                .IsRequired()
+                .HasMaxLength(100);
 
             cfg.Property(u => u.LastName)
-               .IsRequired()
-               .HasMaxLength(100);
+                .IsRequired()
+                .HasMaxLength(100);
 
             cfg.Property(u => u.Email)
-               .IsRequired()
-               .HasMaxLength(256);
+                .IsRequired()
+                .HasMaxLength(256);
         });
     }
 }

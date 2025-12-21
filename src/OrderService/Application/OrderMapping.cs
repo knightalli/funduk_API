@@ -1,5 +1,8 @@
 ﻿using Common.Contracts.Orders;
 using OrderService.Domain;
+using OrderItem = Common.Contracts.Orders.OrderItem;
+using ProductId = Common.Contracts.Orders.ProductId;
+using UserId = Common.Contracts.Orders.UserId;
 
 namespace OrderService.Application;
 
@@ -9,10 +12,10 @@ public static class OrderMapping
     {
         return new OrderDto(
             order.Id.Value,
-            new Common.Contracts.Orders.UserId(order.UserId.Value),
+            new UserId(order.UserId.Value),
             order.OrderItems
-                .Select(i => new Common.Contracts.Orders.OrderItem(
-                    new Common.Contracts.Orders.ProductId(i.ProductId.Value),
+                .Select(i => new OrderItem(
+                    new ProductId(i.ProductId.Value),
                     i.Quantity))
                 .ToList()
         );

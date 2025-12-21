@@ -1,15 +1,20 @@
 ﻿namespace OrderService.Domain;
 
 public readonly record struct OrderId(Guid Value);
+
 public readonly record struct UserId(Guid Value);
+
 public readonly record struct ProductId(Guid Value);
+
 public record OrderItem(ProductId ProductId, int Quantity);
 
 public sealed class Order
 {
     private readonly List<OrderItem> _items = new();
 
-    private Order() { }
+    private Order()
+    {
+    }
 
     public Order(OrderId id, UserId userId, IEnumerable<OrderItem> items)
     {
@@ -32,5 +37,3 @@ public sealed class Order
         _items.Remove(item);
     }
 }
-
-

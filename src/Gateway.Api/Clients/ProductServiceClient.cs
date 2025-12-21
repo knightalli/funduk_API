@@ -10,7 +10,7 @@ public sealed class ProductServiceClient(HttpClient http)
         var pairs = ids.Select(id => new KeyValuePair<string, string>("ids", id.ToString()));
         var url = QueryHelpers.AddQueryString("/products", pairs);
 
-        var products = await http.GetFromJsonAsync<List<ProductDto>>(url, cancellationToken: ct);
+        var products = await http.GetFromJsonAsync<List<ProductDto>>(url, ct);
         return products ?? [];
     }
 }

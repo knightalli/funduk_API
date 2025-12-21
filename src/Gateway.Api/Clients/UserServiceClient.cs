@@ -1,5 +1,5 @@
-﻿using Common.Contracts.Users;
-using System.Net;
+﻿using System.Net;
+using Common.Contracts.Users;
 
 namespace Gateway.Api.Clients;
 
@@ -13,6 +13,6 @@ public sealed class UserServiceClient(HttpClient http)
             return null;
 
         resp.EnsureSuccessStatusCode();
-        return await resp.Content.ReadFromJsonAsync<UserDto>(cancellationToken: ct);
+        return await resp.Content.ReadFromJsonAsync<UserDto>(ct);
     }
 }

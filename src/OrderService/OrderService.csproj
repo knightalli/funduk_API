@@ -12,8 +12,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ProductService\ProductService.csproj" />
-      <ProjectReference Include="..\UserService\UserService.csproj" />
+        <ProjectReference Include="..\ProductService\ProductService.csproj"/>
+        <ProjectReference Include="..\UserService\UserService.csproj"/>
     </ItemGroup>
 
 </Project>

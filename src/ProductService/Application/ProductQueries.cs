@@ -11,18 +11,16 @@ public interface IProductQueries
 
 public sealed class ProductQueries(IProductRepository repository) : IProductQueries
 {
-    private readonly IProductRepository _repository = repository;
-
     public async Task<ProductDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
-        var product = await _repository.GetByIdAsync(new ProductId(id), ct);
+        var product = await repository.GetByIdAsync(new ProductId(id), ct);
         return product?.ToDto();
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
         var productIds = ids.Select(x => new ProductId(x)).ToArray();
-        var products = await _repository.GetByIdsAsync(productIds, ct);
+        var products = await repository.GetByIdsAsync(productIds, ct);
         return [.. products.Select(p => p.ToDto())];
     }
 }

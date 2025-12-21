@@ -12,14 +12,12 @@ public interface IProductCommands
 
 public sealed class ProductCommands(IProductRepository repository) : IProductCommands
 {
-    private readonly IProductRepository _repository = repository;
-
     public async Task<ProductDto> CreateAsync(CreateProductCommand command, CancellationToken ct)
     {
         var product = new Product(new ProductId(Guid.NewGuid()), command.Name, command.Category, command.Price);
 
-        await _repository.AddAsync(product, ct);
-        await _repository.SaveChangesAsync(ct);
+        await repository.AddAsync(product, ct);
+        await repository.SaveChangesAsync(ct);
 
         return product.ToDto();
     }

@@ -8,9 +8,11 @@ public class OrderRepository(OrderDbContext db) : IOrderRepository
     private readonly OrderDbContext _db = db;
 
     public Task<Order?> GetByIdAsync(OrderId id, CancellationToken cancellationToken)
-            => _db.Orders
-                .Include(o => o.OrderItems)
-                .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+    {
+        return _db.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+    }
 
     public async Task<IReadOnlyList<Order>> GetByUserIdAsync(UserId userId, CancellationToken cancellationToken)
     {
@@ -38,9 +40,9 @@ public class OrderRepository(OrderDbContext db) : IOrderRepository
         order.RemoveItem(orderItem);
         return Task.CompletedTask;
     }
+
     public Task SaveChangesAsync(CancellationToken ct)
     {
         return _db.SaveChangesAsync(ct);
     }
-
 }

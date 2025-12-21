@@ -1,7 +1,7 @@
 <Solution>
-  <Project Path="Common.Contracts/Common.Contracts.csproj" Id="60d93a73-f72b-4fa7-8da5-669f06ed3454" />
-  <Project Path="Gateway.Api/Gateway.Api.csproj" Id="48f9d92d-9616-48bb-9a13-803629c016e8" />
-  <Project Path="OrderService\OrderService.csproj" />
-  <Project Path="ProductService/ProductService.csproj" />
-  <Project Path="UserService/UserService.csproj" />
+    <Project Path="Common.Contracts/Common.Contracts.csproj" Id="60d93a73-f72b-4fa7-8da5-669f06ed3454"/>
+    <Project Path="Gateway.Api/Gateway.Api.csproj" Id="48f9d92d-9616-48bb-9a13-803629c016e8"/>
+    <Project Path="OrderService\OrderService.csproj"/>
+    <Project Path="ProductService/ProductService.csproj"/>
+    <Project Path="UserService/UserService.csproj"/>
 </Solution>
