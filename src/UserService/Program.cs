@@ -31,10 +31,14 @@ builder.Services
         options.User.RequireUniqueEmail = true;
     })
     .AddRoles<IdentityRole<Guid>>()
-    .AddEntityFrameworkStores<UserDbContext>();
+    .AddEntityFrameworkStores<UserDbContext>()
+    .AddSignInManager();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserQueries, UserQueries>();
+builder.Services.AddScoped<IUserCommands, UserCommands>();
+
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();

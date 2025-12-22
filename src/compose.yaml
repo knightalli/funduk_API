@@ -53,6 +53,9 @@ services:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Users: Host=postgres;Port=5432;Database=users_db;Username=postgres;Password=postgres
+      Jwt__Issuer: http://gateway.api
+      Jwt__Audience: gateway
+      Jwt__Key: "dev-super-secret-key-change-me-please-32chars"
     ports:
       - "15101:8080"
     depends_on:

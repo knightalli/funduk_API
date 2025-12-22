@@ -2,13 +2,16 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
-using System.Net;
 using Common.Contracts.Gateway;
+using Common.Contracts.Orders;
+using Common.Contracts.Products;
+using Common.Contracts.Users;
 using Gateway.Api.Clients;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using OpenTelemetry.Metrics;
 using Polly;
 using Polly.Extensions.Http;
@@ -28,60 +31,42 @@ Log.Information("Gateway запускается");
 
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Gateway API", Version = "v1" });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Введите JWT: Bearer {token}"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration["Redis:ConnectionString"];
     options.InstanceName = "gateway:";
 });
-
-static IAsyncPolicy<HttpResponseMessage> RetryPolicy() =>
-    HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .WaitAndRetryAsync(
-            retryCount: 3,
-            sleepDurationProvider: retry => TimeSpan.FromMilliseconds(200 * retry),
-            onRetry: (outcome, delay, retry, _) =>
-            {
-                Log.Warning(
-                    "Повтор {Retry} после {Delay}мс из-за {Reason}",
-                    retry,
-                    delay.TotalMilliseconds,
-                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
-                );
-            });
-
-static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
-    HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .CircuitBreakerAsync(
-            handledEventsAllowedBeforeBreaking: 5,
-            durationOfBreak: TimeSpan.FromSeconds(30),
-            onBreak: (outcome, breakDelay) =>
-            {
-                Log.Error(
-                    "Circuit breaker начат на {Seconds}с из-за {Reason}",
-                    breakDelay.TotalSeconds,
-                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
-                );
-            },
-            onReset: () =>
-            {
-                Log.Information("Circuit breaker перезагружен");
-            });
-
-static IAsyncPolicy<HttpResponseMessage> FallbackPolicy() =>
-    Policy<HttpResponseMessage>
-        .Handle<Exception>()
-        .OrResult(r => !r.IsSuccessStatusCode)
-        .FallbackAsync(
-            fallbackAction: _ =>
-            {
-                Log.Error("Fallback выполнен. Возвращаем 503");
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
-            });
-
 
 builder.Services.AddOpenTelemetry()
     .WithMetrics(mb =>
@@ -137,7 +122,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    
+
     options.AddPolicy("profile", context =>
     {
         var userId = context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -158,22 +143,25 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddHttpClient<UserServiceClient>(c =>
-{
-    c.BaseAddress = new Uri(builder.Configuration["Services:User"]!);
-    c.Timeout = TimeSpan.FromSeconds(2);
-}).AddPolicyHandler(RetryPolicy()).AddPolicyHandler(CircuitBreakerPolicy()).AddPolicyHandler(FallbackPolicy());
+    {
+        c.BaseAddress = new Uri(builder.Configuration["Services:User"]!);
+        c.Timeout = TimeSpan.FromSeconds(2);
+    }).AddPolicyHandler(RetryPolicy())
+    .AddPolicyHandler(CircuitBreakerPolicy());
 
 builder.Services.AddHttpClient<OrderServiceClient>(c =>
-{
-    c.BaseAddress = new Uri(builder.Configuration["Services:Orders"]!);
-    c.Timeout = TimeSpan.FromSeconds(2);
-}).AddPolicyHandler(RetryPolicy()).AddPolicyHandler(CircuitBreakerPolicy()).AddPolicyHandler(FallbackPolicy());;
+    {
+        c.BaseAddress = new Uri(builder.Configuration["Services:Orders"]!);
+        c.Timeout = TimeSpan.FromSeconds(2);
+    }).AddPolicyHandler(RetryPolicy())
+    .AddPolicyHandler(CircuitBreakerPolicy());
 
 builder.Services.AddHttpClient<ProductServiceClient>(c =>
-{
-    c.BaseAddress = new Uri(builder.Configuration["Services:Products"]!);
-    c.Timeout = TimeSpan.FromSeconds(2);
-}).AddPolicyHandler(RetryPolicy()).AddPolicyHandler(CircuitBreakerPolicy()).AddPolicyHandler(FallbackPolicy());;
+    {
+        c.BaseAddress = new Uri(builder.Configuration["Services:Products"]!);
+        c.Timeout = TimeSpan.FromSeconds(2);
+    }).AddPolicyHandler(RetryPolicy())
+    .AddPolicyHandler(CircuitBreakerPolicy());
 
 var app = builder.Build();
 
@@ -205,7 +193,7 @@ app.MapGet("/api/profile/{userId:guid}", async (
         CancellationToken ct) =>
     {
         Log.Information("Запрос на профиль пользователя. UserId={UserId}", userId);
-        
+
         var subject = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(subject, out var tokenUserId) || tokenUserId != userId)
         {
@@ -223,41 +211,70 @@ app.MapGet("/api/profile/{userId:guid}", async (
         if (cached is not null)
         {
             Log.Information("Найден кэш для профиля {UserId}", userId);
-            var cachedResponse = JsonSerializer.Deserialize<ProfileResponseDto>(cached)!;
-            return Results.Ok(cachedResponse);
+            return Results.Ok(JsonSerializer.Deserialize<ProfileResponseDto>(cached)!);
         }
-        
+
         Log.Information("Не найден кэш для профиля {UserId}", userId);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(2));
         var token = timeoutCts.Token;
 
-        var userTask = users.GetByIdAsync(userId, token);
-        var ordersTask = orders.GetByUserIdAsync(userId, token);
+        UserDto? user;
+        try
+        {
+            user = await users.GetByIdAsync(userId, token);
+        }
+        catch (Exception ex) when (IsDownstreamUnavailable(ex))
+        {
+            Log.Warning(ex, "UserService недоступен для userId={UserId}", userId);
+            return Results.Problem(
+                title: "User service unavailable",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
 
-        await Task.WhenAll(userTask, ordersTask);
-
-        var user = await userTask;
         if (user is null)
         {
             Log.Warning("User {UserId} не найден", userId);
-            return Results.NotFound(new ProblemDetails { Title = "User not found", Status = 404 }); 
+            return Results.NotFound(new ProblemDetails { Title = "User not found", Status = 404 });
         }
 
-        var userOrders = await ordersTask;
+        IReadOnlyList<OrderDto> userOrders;
+        try
+        {
+            userOrders = await orders.GetByUserIdAsync(userId, token);
+        }
+        catch (Exception ex) when (IsDownstreamUnavailable(ex))
+        {
+            Log.Warning(ex, "OrderService недоступен для userId={UserId}. Fallback: []", userId);
+            userOrders = [];
+        }
 
         var productIds = userOrders
             .SelectMany(o => o.OrderItems)
             .Select(i => i.ProductId.Value)
             .Distinct()
             .ToArray();
-        
+
         Log.Information("Найдено {Count} продуктов для пользователя {UserId}", productIds.Length, userId);
 
-        var productList = productIds.Length == 0
-            ? []
-            : await products.GetByIdsAsync(productIds, token);
+        IReadOnlyList<ProductDto> productList;
+        if (productIds.Length == 0)
+        {
+            productList = [];
+        }
+        else
+        {
+            try
+            {
+                productList = await products.GetByIdsAsync(productIds, token);
+            }
+            catch (Exception ex) when (IsDownstreamUnavailable(ex))
+            {
+                Log.Warning(ex, "ProductService недоступен. Fallback: []");
+                productList = [];
+            }
+        }
 
         var productById = productList.ToDictionary(p => p.Id, p => p);
 
@@ -294,7 +311,7 @@ app.MapGet("/api/profile/{userId:guid}", async (
         );
 
         Log.Information("Профиль успешно открыт для пользователя {UserId}", userId);
-        
+
         return Results.Ok(response);
     })
     .WithName("GetProfile")
@@ -302,6 +319,45 @@ app.MapGet("/api/profile/{userId:guid}", async (
     .RequireRateLimiting("profile")
     .Produces<ProfileResponseDto>()
     .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+    .Produces<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)
     .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
 app.Run();
+return;
+
+static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
+    HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 5,
+            durationOfBreak: TimeSpan.FromSeconds(30),
+            onBreak: (outcome, breakDelay) =>
+            {
+                Log.Error(
+                    "Circuit breaker начат на {Seconds}с из-за {Reason}",
+                    breakDelay.TotalSeconds,
+                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
+                );
+            },
+            onReset: () => { Log.Information("Circuit breaker перезагружен"); });
+
+static bool IsDownstreamUnavailable(Exception ex) =>
+    ex is Polly.CircuitBreaker.BrokenCircuitException
+        or Polly.CircuitBreaker.BrokenCircuitException<HttpResponseMessage> or HttpRequestException
+        or TaskCanceledException or TimeoutException;
+
+static IAsyncPolicy<HttpResponseMessage> RetryPolicy() =>
+    HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: retry => TimeSpan.FromMilliseconds(200 * retry),
+            onRetry: (outcome, delay, retry, _) =>
+            {
+                Log.Warning(
+                    "Повтор {Retry} после {Delay}мс из-за {Reason}",
+                    retry,
+                    delay.TotalMilliseconds,
+                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
+                );
+            });

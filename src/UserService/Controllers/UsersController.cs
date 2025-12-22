@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Common.Contracts.Users;
+using Microsoft.AspNetCore.Mvc;
 using UserService.Application;
 
 namespace UserService.Controllers;
 
 [ApiController]
 [Route("users")]
-public sealed class UsersController(IUserQueries queries, ILogger<UsersController> logger) : ControllerBase
+public sealed class UsersController(IUserQueries queries, IUserCommands commands, ILogger<UsersController> logger)
+    : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -27,5 +29,12 @@ public sealed class UsersController(IUserQueries queries, ILogger<UsersControlle
         }
 
         return Ok(user);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateUserDto dto, CancellationToken ct)
+    {
+        var created = await commands.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 }

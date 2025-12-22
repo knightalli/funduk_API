@@ -10,7 +10,7 @@ public record OrderItem(ProductId ProductId, int Quantity);
 
 public sealed class Order
 {
-    private readonly List<OrderItem> _items = new();
+    private readonly List<OrderItem> _items = [];
 
     private Order()
     {
@@ -25,7 +25,8 @@ public sealed class Order
 
     public OrderId Id { get; private set; }
     public UserId UserId { get; private set; }
-    public IReadOnlyCollection<OrderItem> OrderItems => _items.AsReadOnly();
+
+    public IReadOnlyCollection<OrderItem> OrderItems => _items;
 
     public void AddItem(OrderItem item)
     {
