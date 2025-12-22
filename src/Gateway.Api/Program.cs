@@ -12,8 +12,19 @@ using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Metrics;
 using Polly;
 using Polly.Extensions.Http;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog();
+
+Log.Information("Gateway запускается");
 
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
@@ -30,23 +41,46 @@ static IAsyncPolicy<HttpResponseMessage> RetryPolicy() =>
         .HandleTransientHttpError()
         .WaitAndRetryAsync(
             retryCount: 3,
-            sleepDurationProvider: retry => TimeSpan.FromMilliseconds(200 * retry)
-        );
+            sleepDurationProvider: retry => TimeSpan.FromMilliseconds(200 * retry),
+            onRetry: (outcome, delay, retry, _) =>
+            {
+                Log.Warning(
+                    "Повтор {Retry} после {Delay}мс из-за {Reason}",
+                    retry,
+                    delay.TotalMilliseconds,
+                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
+                );
+            });
 
 static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
     HttpPolicyExtensions
         .HandleTransientHttpError()
         .CircuitBreakerAsync(
             handledEventsAllowedBeforeBreaking: 5,
-            durationOfBreak: TimeSpan.FromSeconds(30)
-        );
+            durationOfBreak: TimeSpan.FromSeconds(30),
+            onBreak: (outcome, breakDelay) =>
+            {
+                Log.Error(
+                    "Circuit breaker начат на {Seconds}с из-за {Reason}",
+                    breakDelay.TotalSeconds,
+                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
+                );
+            },
+            onReset: () =>
+            {
+                Log.Information("Circuit breaker перезагружен");
+            });
 
 static IAsyncPolicy<HttpResponseMessage> FallbackPolicy() =>
     Policy<HttpResponseMessage>
         .Handle<Exception>()
         .OrResult(r => !r.IsSuccessStatusCode)
         .FallbackAsync(
-            new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+            fallbackAction: _ =>
+            {
+                Log.Error("Fallback выполнен. Возвращаем 503");
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+            });
 
 
 builder.Services.AddOpenTelemetry()
@@ -68,6 +102,7 @@ if (string.IsNullOrWhiteSpace(jwtIssuer) ||
     string.IsNullOrWhiteSpace(jwtAudience) ||
     string.IsNullOrWhiteSpace(jwtKey))
 {
+    Log.Fatal("JWT конфигурация потеряна");
     throw new InvalidOperationException("JWT config is missing. Please set Jwt:Issuer, Jwt:Audience, Jwt:Key.");
 }
 
@@ -102,7 +137,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
+    
     options.AddPolicy("profile", context =>
     {
         var userId = context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -142,6 +177,7 @@ builder.Services.AddHttpClient<ProductServiceClient>(c =>
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -168,18 +204,30 @@ app.MapGet("/api/profile/{userId:guid}", async (
         IDistributedCache cache,
         CancellationToken ct) =>
     {
+        Log.Information("Запрос на профиль пользователя. UserId={UserId}", userId);
+        
         var subject = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(subject, out var tokenUserId) || tokenUserId != userId)
+        {
+            Log.Warning(
+                "Запрещен доступ к профилю. TokenUserId={TokenUserId}, RequestedUserId={UserId}",
+                subject,
+                userId
+            );
             return Results.Forbid();
+        }
 
         var cacheKey = $"profile:{userId}";
 
         var cached = await cache.GetStringAsync(cacheKey, ct);
         if (cached is not null)
         {
+            Log.Information("Найден кэш для профиля {UserId}", userId);
             var cachedResponse = JsonSerializer.Deserialize<ProfileResponseDto>(cached)!;
             return Results.Ok(cachedResponse);
         }
+        
+        Log.Information("Не найден кэш для профиля {UserId}", userId);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(2));
@@ -192,7 +240,10 @@ app.MapGet("/api/profile/{userId:guid}", async (
 
         var user = await userTask;
         if (user is null)
-            return Results.NotFound(new ProblemDetails { Title = "User not found", Status = 404 });
+        {
+            Log.Warning("User {UserId} не найден", userId);
+            return Results.NotFound(new ProblemDetails { Title = "User not found", Status = 404 }); 
+        }
 
         var userOrders = await ordersTask;
 
@@ -201,6 +252,8 @@ app.MapGet("/api/profile/{userId:guid}", async (
             .Select(i => i.ProductId.Value)
             .Distinct()
             .ToArray();
+        
+        Log.Information("Найдено {Count} продуктов для пользователя {UserId}", productIds.Length, userId);
 
         var productList = productIds.Length == 0
             ? []
@@ -240,6 +293,8 @@ app.MapGet("/api/profile/{userId:guid}", async (
             ct
         );
 
+        Log.Information("Профиль успешно открыт для пользователя {UserId}", userId);
+        
         return Results.Ok(response);
     })
     .WithName("GetProfile")
