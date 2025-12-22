@@ -1,7 +1,8 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using System.Net;
 using Common.Contracts.Gateway;
 using Gateway.Api.Clients;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,6 +10,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Metrics;
+using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +24,30 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration["Redis:ConnectionString"];
     options.InstanceName = "gateway:";
 });
+
+static IAsyncPolicy<HttpResponseMessage> RetryPolicy() =>
+    HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: retry => TimeSpan.FromMilliseconds(200 * retry)
+        );
+
+static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
+    HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 5,
+            durationOfBreak: TimeSpan.FromSeconds(30)
+        );
+
+static IAsyncPolicy<HttpResponseMessage> FallbackPolicy() =>
+    Policy<HttpResponseMessage>
+        .Handle<Exception>()
+        .OrResult(r => !r.IsSuccessStatusCode)
+        .FallbackAsync(
+            new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+
 
 builder.Services.AddOpenTelemetry()
     .WithMetrics(mb =>
@@ -99,19 +126,19 @@ builder.Services.AddHttpClient<UserServiceClient>(c =>
 {
     c.BaseAddress = new Uri(builder.Configuration["Services:User"]!);
     c.Timeout = TimeSpan.FromSeconds(2);
-});
+}).AddPolicyHandler(RetryPolicy()).AddPolicyHandler(CircuitBreakerPolicy()).AddPolicyHandler(FallbackPolicy());
 
 builder.Services.AddHttpClient<OrderServiceClient>(c =>
 {
     c.BaseAddress = new Uri(builder.Configuration["Services:Orders"]!);
     c.Timeout = TimeSpan.FromSeconds(2);
-});
+}).AddPolicyHandler(RetryPolicy()).AddPolicyHandler(CircuitBreakerPolicy()).AddPolicyHandler(FallbackPolicy());;
 
 builder.Services.AddHttpClient<ProductServiceClient>(c =>
 {
     c.BaseAddress = new Uri(builder.Configuration["Services:Products"]!);
     c.Timeout = TimeSpan.FromSeconds(2);
-});
+}).AddPolicyHandler(RetryPolicy()).AddPolicyHandler(CircuitBreakerPolicy()).AddPolicyHandler(FallbackPolicy());;
 
 var app = builder.Build();
 
