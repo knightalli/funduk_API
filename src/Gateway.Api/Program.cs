@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -146,21 +147,27 @@ builder.Services.AddHttpClient<UserServiceClient>(c =>
     {
         c.BaseAddress = new Uri(builder.Configuration["Services:User"]!);
         c.Timeout = TimeSpan.FromSeconds(2);
-    }).AddPolicyHandler(RetryPolicy())
+    })
+    .AddPolicyHandler(FallbackPolicy())
+    .AddPolicyHandler(RetryPolicy())
     .AddPolicyHandler(CircuitBreakerPolicy());
 
 builder.Services.AddHttpClient<OrderServiceClient>(c =>
     {
         c.BaseAddress = new Uri(builder.Configuration["Services:Orders"]!);
         c.Timeout = TimeSpan.FromSeconds(2);
-    }).AddPolicyHandler(RetryPolicy())
+    })
+    .AddPolicyHandler(FallbackPolicy())
+    .AddPolicyHandler(RetryPolicy())
     .AddPolicyHandler(CircuitBreakerPolicy());
 
 builder.Services.AddHttpClient<ProductServiceClient>(c =>
     {
         c.BaseAddress = new Uri(builder.Configuration["Services:Products"]!);
         c.Timeout = TimeSpan.FromSeconds(2);
-    }).AddPolicyHandler(RetryPolicy())
+    })
+    .AddPolicyHandler(FallbackPolicy())
+    .AddPolicyHandler(RetryPolicy())
     .AddPolicyHandler(CircuitBreakerPolicy());
 
 var app = builder.Build();
@@ -325,6 +332,28 @@ app.MapGet("/api/profile/{userId:guid}", async (
 app.Run();
 return;
 
+static IAsyncPolicy<HttpResponseMessage> FallbackPolicy() =>
+    Policy<HttpResponseMessage>
+        .Handle<HttpRequestException>()
+        .Or<TaskCanceledException>()
+        .Or<TimeoutException>()
+        .Or<Polly.CircuitBreaker.BrokenCircuitException>()
+        .Or<Polly.CircuitBreaker.BrokenCircuitException<HttpResponseMessage>>()
+        .OrResult(r => (int)r.StatusCode >= 500 || r.StatusCode == HttpStatusCode.RequestTimeout)
+        .FallbackAsync(
+            fallbackAction: static ct =>
+                Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)),
+            onFallbackAsync: static outcome =>
+            {
+                Log.Error(
+                    outcome.Exception,
+                    "Fallback выполнен. Возвращаем 503. Reason={Reason}",
+                    outcome.Exception?.Message ?? outcome.Result?.StatusCode.ToString()
+                );
+
+                return Task.CompletedTask;
+            });
+
 static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
     HttpPolicyExtensions
         .HandleTransientHttpError()
@@ -343,8 +372,10 @@ static IAsyncPolicy<HttpResponseMessage> CircuitBreakerPolicy() =>
 
 static bool IsDownstreamUnavailable(Exception ex) =>
     ex is Polly.CircuitBreaker.BrokenCircuitException
-        or Polly.CircuitBreaker.BrokenCircuitException<HttpResponseMessage> or HttpRequestException
-        or TaskCanceledException or TimeoutException;
+        or Polly.CircuitBreaker.BrokenCircuitException<HttpResponseMessage>
+        or HttpRequestException
+        or TaskCanceledException
+        or TimeoutException;
 
 static IAsyncPolicy<HttpResponseMessage> RetryPolicy() =>
     HttpPolicyExtensions
