@@ -1,5 +1,21 @@
 # funduk_API
 
+# Инструкция по запуску:
+
+1. `docker compose up --build`
+2. `cd src/UserService`
+3. `dotnet ef migrations add Initial \
+  --project UserService.Infrastructure \
+  --startup-project UserService`
+4. `cd src/OrderService`
+5. `dotnet ef migrations add Initial \
+  --project OrderService.Infrastructure \
+  --startup-project OrderService`
+6. `cd src/ProductService`
+7. `dotnet ef migrations add Initial \
+  --project ProductService.Infrastructure \
+  --startup-project ProductService`
+
 # Описание:
 
 Разработать API Gateway (или Backend for Frontend — BFF), который объединяет данные из нескольких микросервисов и предоставляет клиентам единое REST API. Сервис должен поддерживать агрегацию ответов, кэширование данных и маршрутизацию запросов.
