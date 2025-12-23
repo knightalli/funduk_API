@@ -2,19 +2,7 @@
 
 # Инструкция по запуску:
 
-1. `docker compose up --build`
-2. `cd src/UserService`
-3. `dotnet ef migrations add Initial \
-  --project UserService.Infrastructure \
-  --startup-project UserService`
-4. `cd src/OrderService`
-5. `dotnet ef migrations add Initial \
-  --project OrderService.Infrastructure \
-  --startup-project OrderService`
-6. `cd src/ProductService`
-7. `dotnet ef migrations add Initial \
-  --project ProductService.Infrastructure \
-  --startup-project ProductService`
+1. `docker compose up --d`
 
 # Описание:
 
